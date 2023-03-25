@@ -47,6 +47,7 @@ void cmd_list(char *dir_name, DIR *root, int recursive, char *name_ends_with, in
 		{
 			if (!(stat_buff.st_mode & 0100))
 			{
+				free(path);
 				continue;
 			}
 		}
@@ -72,6 +73,7 @@ void cmd_list(char *dir_name, DIR *root, int recursive, char *name_ends_with, in
 				}
 			}
 		}
+		free(path);
 	}
 }
 
