@@ -151,7 +151,7 @@ int main(int argc, char **argv)
 			read(fd, &(file_header.header_size), 2);
 			read(fd, &(file_header.magic_nmber), 2);
 
-			if (strcmp((char *)&(file_header.magic_nmber), "Hy") != 0)
+			if (file_header.magic_nmber != (0x7948))
 			{
 				printf("ERROR\nwrong magic\n");
 				close(fd);
@@ -204,14 +204,16 @@ int main(int argc, char **argv)
 				}
 			}
 			printf("SUCCESS\n");
-			printf("version=%d\n",(int)file_header.version);
-			printf("nr_sections=%d\n",(int)file_header.no_of_sections);
-			for(int i=0;i<file_header.no_of_sections;i++){
-				printf("section%d: ",i+1);
-				printf("%s ",file_header.section_headers[i].sect_name);
-				printf("%d ",(int)file_header.section_headers[i].sect_type);
-				printf("%d\n",(int)file_header.section_headers[i].sect_size);
+			printf("version=%d\n", (int)file_header.version);
+			printf("nr_sections=%d\n", (int)file_header.no_of_sections);
+			for (int i = 0; i < file_header.no_of_sections; i++)
+			{
+				printf("section%d: ", i + 1);
+				printf("%s ", file_header.section_headers[i].sect_name);
+				printf("%d ", (int)file_header.section_headers[i].sect_type);
+				printf("%d\n", (int)file_header.section_headers[i].sect_size);
 			}
+			free(file_header.section_headers);
 		}
 		else if (strcmp(argv[argi], "extract") == 0)
 		{
