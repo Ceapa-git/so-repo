@@ -7,6 +7,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define BUFF_SIZE 1024
+#define VALID_SECT_COUNT 7
+const int32_t VALID_SECT_TYPES[VALID_SECT_COUNT] = {58, 20, 86, 28, 99, 89, 28};
+const int8_t VALID_VERSION_MIN = 46;
+const int8_t VALID_VERSION_MAX = 118;
+const int8_t VALID_SECT_COUNT_MIN = 6;
+const int8_t VALID_SECT_COUNT_MAX = 20;
+const int16_t VALID_MAGIC_NUMBER = 0x7948; // 0x7948 = "Hy"
+
 typedef struct _section_header
 {
 	char sect_name[17];
@@ -77,6 +86,60 @@ void cmd_list(char *dir_name, DIR *root, int recursive, char *name_ends_with, in
 	}
 }
 
+int read_sf(char *file_path, sf_header *file_header)
+{
+	int fd = open(file_path, O_RDONLY);
+	if (fd < 0)
+		return -1;
+	lseek(fd, -4, SEEK_END);
+	read(fd, &(file_header->header_size), 2);
+	read(fd, &(file_header->magic_nmber), 2);
+	if (file_header->magic_nmber != VALID_MAGIC_NUMBER)
+	{
+		close(fd);
+		return -2;
+	}
+	lseek(fd, -(file_header->header_size), SEEK_END);
+	read(fd, &(file_header->version), 1);
+	if (file_header->version < VALID_VERSION_MIN ||
+		file_header->version > VALID_VERSION_MAX)
+	{
+		close(fd);
+		return -3;
+	}
+	read(fd, &(file_header->no_of_sections), 1);
+	if (file_header->no_of_sections < VALID_SECT_COUNT_MIN ||
+		file_header->no_of_sections > VALID_SECT_COUNT_MAX)
+	{
+		close(fd);
+		return -4;
+	}
+	file_header->section_headers = (section_header *)calloc(file_header->no_of_sections, sizeof(section_header));
+	for (int i = 0; i < file_header->no_of_sections; i++)
+	{
+		read(fd, file_header->section_headers[i].sect_name, 16);
+		read(fd, &(file_header->section_headers[i].sect_type), 4);
+		read(fd, &(file_header->section_headers[i].sect_offset), 4);
+		read(fd, &(file_header->section_headers[i].sect_size), 4);
+		int valid = 0;
+		for (int j = 0; j < VALID_SECT_COUNT; j++)
+		{
+			if (file_header->section_headers[i].sect_type == VALID_SECT_TYPES[j])
+			{
+				valid = 1;
+				break;
+			}
+		}
+		if (valid == 0)
+		{
+			free(file_header->section_headers);
+			close(fd);
+			return -5;
+		}
+	}
+	return fd;
+}
+
 int main(int argc, char **argv)
 {
 
@@ -143,66 +206,30 @@ int main(int argc, char **argv)
 					file_path = argv[argi] + 5;
 				}
 			}
-			int fd = open(file_path, O_RDONLY);
-			if (fd < 0)
-				return 0;
 			sf_header file_header;
-			lseek(fd, -4, SEEK_END);
-			read(fd, &(file_header.header_size), 2);
-			read(fd, &(file_header.magic_nmber), 2);
-
-			if (file_header.magic_nmber != (0x7948))
+			int err = read_sf(file_path, &file_header);
+			if (err < 0)
 			{
-				printf("ERROR\nwrong magic\n");
-				close(fd);
-				return 0;
-			}
-
-			lseek(fd, -file_header.header_size, SEEK_END);
-
-			read(fd, &(file_header.version), 1);
-			read(fd, &(file_header.no_of_sections), 1);
-			file_header.section_headers = (section_header *)malloc(file_header.no_of_sections * sizeof(section_header));
-			for (int i = 0; i < file_header.no_of_sections; i++)
-			{
-				read(fd, file_header.section_headers[i].sect_name, 16);
-				read(fd, &(file_header.section_headers[i].sect_type), 4);
-				read(fd, &(file_header.section_headers[i].sect_offset), 4);
-				read(fd, &(file_header.section_headers[i].sect_size), 4);
-			}
-			read(fd, &(file_header.header_size), 2);
-			read(fd, &(file_header.magic_nmber), 2);
-
-			if (file_header.version < 46 || file_header.version > 118)
-			{
-				printf("ERROR\nwrong version\n");
-				close(fd);
-				free(file_header.section_headers);
-				return 0;
-			}
-			if (file_header.no_of_sections < 6 || file_header.no_of_sections > 20)
-			{
-				printf("ERROR\nwrong sect_nr\n");
-				close(fd);
-				free(file_header.section_headers);
-				return 0;
-			}
-			for (int i = 0; i < file_header.no_of_sections; i++)
-			{
-				if (file_header.section_headers[i].sect_type != 58 &&
-					file_header.section_headers[i].sect_type != 20 &&
-					file_header.section_headers[i].sect_type != 86 &&
-					file_header.section_headers[i].sect_type != 28 &&
-					file_header.section_headers[i].sect_type != 99 &&
-					file_header.section_headers[i].sect_type != 89 &&
-					file_header.section_headers[i].sect_type != 28)
+				switch (err)
 				{
+				case -2:
+					printf("ERROR\nwrong magic\n");
+					break;
+				case -3:
+					printf("ERROR\nwrong version\n");
+					break;
+				case -4:
+					printf("ERROR\nwrong sect_nr\n");
+					break;
+				case -5:
 					printf("ERROR\nwrong sect_types\n");
-					close(fd);
-					free(file_header.section_headers);
-					return 0;
+					break;
+				default:
+					break;
 				}
+				return 0;
 			}
+			close(err);
 			printf("SUCCESS\n");
 			printf("version=%d\n", (int)file_header.version);
 			printf("nr_sections=%d\n", (int)file_header.no_of_sections);
@@ -219,6 +246,81 @@ int main(int argc, char **argv)
 		{
 			if (argc != 5)
 				return 0;
+			char *file_path = NULL;
+			int line_nr = 0;
+			int section_nr = 0;
+			for (argi = 1; argi < argc; argi++)
+			{
+				if (strncmp(argv[argi], "path=", 5) == 0)
+				{
+					file_path = argv[argi] + 5;
+				}
+				else if (strncmp(argv[argi], "section=", 8) == 0)
+				{
+					sscanf(argv[argi] + 8, "%d", &section_nr);
+				}
+				else if (strncmp(argv[argi], "line=", 5) == 0)
+				{
+					sscanf(argv[argi] + 5, "%d", &line_nr);
+				}
+			}
+			sf_header file_header;
+			int fd = read_sf(file_path, &file_header);
+			if (fd < 0)
+			{
+				printf("ERROR\ninvalid file\n");
+				return 0;
+			}
+			if (section_nr <= 0 || section_nr > file_header.no_of_sections)
+			{
+				printf("ERROR\ninvalid section\n");
+				free(file_header.section_headers);
+				close(fd);
+				return 0;
+			}
+			section_nr--;
+			lseek(fd, file_header.section_headers[section_nr].sect_offset, SEEK_SET);
+			int lines=1;
+			off_t *offsets=(off_t*)malloc(sizeof(off_t)*line_nr);
+			offsets[0]=0;
+			for(int i=0;i<file_header.section_headers[section_nr].sect_size;i++)
+			{
+				char c;
+				read(fd,&c,1);
+				if(c=='\n')
+				{
+					for(int j=line_nr-1;j>0;j--)
+					{
+						offsets[j]=offsets[j-1];
+					}
+					offsets[0]=i+1;
+					lines++;
+				}
+			}
+			if(lines<line_nr)
+			{
+				printf("ERROR\ninvalid line\n");
+				free(offsets);
+				free(file_header.section_headers);
+				close(fd);
+				return 0;
+			}
+			char c;
+			int i=offsets[line_nr-1];
+			lseek(fd, file_header.section_headers[section_nr].sect_offset+i, SEEK_SET);
+			printf("SUCCESS\n");
+			while(i<file_header.section_headers[section_nr].sect_size)
+			{
+				read(fd,&c,1);
+				if(c=='\n')
+					break;
+				printf("%c",c);
+				i++;
+			}
+			printf("\n");
+			free(offsets);
+			free(file_header.section_headers);
+			close(fd);
 		}
 		else if (strcmp(argv[argi], "findall") == 0)
 		{
