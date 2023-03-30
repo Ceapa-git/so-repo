@@ -96,7 +96,7 @@ int read_sf(char *file_path, sf_header *file_header)
 	return fd;
 }
 
-void cmd_list(const char *path, int recursive, char *name_ends_with, int has_perm_execute, int find_all) // TODO broken
+void cmd_list(const char *path, int recursive, char *name_ends_with, int has_perm_execute, int find_all)
 {
 	DIR *dir = NULL;
 	struct dirent *entry = NULL;
@@ -330,16 +330,16 @@ int main(int argc, char **argv)
 			}
 
 			section_nr--;
-			lseek(fd, file_header.section_headers[section_nr].sect_offset, SEEK_SET);
 			int lines = 1;
 			off_t *offsets = (off_t *)malloc(sizeof(off_t) * line_nr);
 			offsets[0] = 0;
+			char *buffer = (char *)calloc(file_header.section_headers[section_nr].sect_size + 10, sizeof(char));
+			lseek(fd, file_header.section_headers[section_nr].sect_offset, SEEK_SET);
+			read(fd, buffer, file_header.section_headers[section_nr].sect_size);
 
 			for (int i = 0; i < file_header.section_headers[section_nr].sect_size; i++)
 			{
-				char c;
-				read(fd, &c, 1);
-				if (c == '\n')
+				if (buffer[i] == '\n')
 				{
 					for (int j = line_nr - 1; j > 0; j--)
 					{
@@ -353,26 +353,25 @@ int main(int argc, char **argv)
 			if (lines < line_nr)
 			{
 				printf("ERROR\ninvalid line\n");
+				free(buffer);
 				free(offsets);
 				free(file_header.section_headers);
 				close(fd);
 				return 0;
 			}
 
-			char c;
-			int i = offsets[line_nr - 1];
-			lseek(fd, file_header.section_headers[section_nr].sect_offset + i, SEEK_SET);
-			printf("SUCCESS\n");
-			while (i < file_header.section_headers[section_nr].sect_size)
+			int start_offset = offsets[line_nr - 1];
+			int end_offset = file_header.section_headers[section_nr].sect_size;
+			if (line_nr != 1)
 			{
-				read(fd, &c, 1);
-				if (c == '\n')
-					break;
-				printf("%c", c);
-				i++;
+				end_offset = offsets[line_nr - 2] - 1;
 			}
 
-			printf("\n");
+			printf("SUCCESS\n");
+			buffer[end_offset] = '\0';
+			printf("%s\n", buffer + start_offset);
+
+			free(buffer);
 			free(offsets);
 			free(file_header.section_headers);
 			close(fd);
