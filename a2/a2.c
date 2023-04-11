@@ -115,49 +115,67 @@ void *proc_6_thread(void *arg)
     sem_t *sem_13 = ((proc_6_thread_data *)arg)->sem_13;
     free(arg);
 
-    int ok=0;
+    int ok = 0;
     sem_wait(sem_13);
-    ok=*proc_6_thread_13_pending;
-    if(ok<0){
+    ok = *proc_6_thread_13_pending;
+    if (ok < 0)
+    {
         sem_post(sem_13);
         sem_wait(sem_sync);
+        info(BEGIN, 6, id);
     }
-    else{
-        if(ok<4){
-            *proc_6_thread_13_pending=ok+1;
+    else
+    {
+        if (id == 13)
+        {
             sem_wait(sem_sync);
+            info(BEGIN, 6, id);
             sem_post(sem_13);
-        }
-        else if(id==13){
-            sem_wait(sem_sync);
-            sem_post(sem_13);
-        }
-        else{
-            sem_post(sem_13);
-            while(ok>=0){
+            do
+            {
                 sem_wait(sem_13);
-                ok=*proc_6_thread_13_pending;
+                ok = *proc_6_thread_13_pending;
+                sem_post(sem_13);
+            } while (ok < 4);
+        }
+        else if (ok < 4)
+        {
+            *proc_6_thread_13_pending = ok + 1;
+            sem_wait(sem_sync);
+            info(BEGIN, 6, id);
+            sem_post(sem_13);
+        }
+        else
+        {
+            sem_post(sem_13);
+            while (ok >= 0)
+            {
+                sem_wait(sem_13);
+                ok = *proc_6_thread_13_pending;
                 sem_post(sem_13);
             }
             sem_wait(sem_sync);
+            info(BEGIN, 6, id);
         }
     }
-    info(BEGIN, 6, id);
-    if(id!=13){
-        while(ok>=0){
+    if (id != 13 && ok >= 0)
+    {
+        while (ok >= 0)
+        {
             sem_wait(sem_13);
-            ok=*proc_6_thread_13_pending;
+            ok = *proc_6_thread_13_pending;
             sem_post(sem_13);
         }
     }
     info(END, 6, id);
-    if(id==13){
+    if (id == 13)
+    {
         sem_wait(sem_13);
-        *proc_6_thread_13_pending=-1;
+        *proc_6_thread_13_pending = -1;
         sem_post(sem_13);
     }
     sem_post(sem_sync);
-    
+
     return NULL;
 }
 void proc_6()
