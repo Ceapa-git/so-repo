@@ -41,7 +41,7 @@ void *proc_5_thread(void *arg)
 
     if (id == 1)
     {
-        int ok=0;
+        int ok = 0;
         while (!ok)
         {
             sem_wait(sem);
@@ -99,8 +99,96 @@ void proc_5()
 
     sem_destroy(&sem);
 }
+
+typedef struct
+{
+    int id;
+    int *proc_6_thread_13_pending;
+    sem_t *sem_sync;
+    sem_t *sem_13;
+} proc_6_thread_data;
+void *proc_6_thread(void *arg)
+{
+    int id = ((proc_6_thread_data *)arg)->id;
+    int *proc_6_thread_13_pending = ((proc_6_thread_data *)arg)->proc_6_thread_13_pending;
+    sem_t *sem_sync = ((proc_6_thread_data *)arg)->sem_sync;
+    sem_t *sem_13 = ((proc_6_thread_data *)arg)->sem_13;
+    free(arg);
+
+    int ok=0;
+    sem_wait(sem_13);
+    ok=*proc_6_thread_13_pending;
+    if(ok<0){
+        sem_post(sem_13);
+        sem_wait(sem_sync);
+    }
+    else{
+        if(ok<4){
+            *proc_6_thread_13_pending=ok+1;
+            sem_wait(sem_sync);
+            sem_post(sem_13);
+        }
+        else if(id==13){
+            sem_wait(sem_sync);
+            sem_post(sem_13);
+        }
+        else{
+            sem_post(sem_13);
+            while(ok>=0){
+                sem_wait(sem_13);
+                ok=*proc_6_thread_13_pending;
+                sem_post(sem_13);
+            }
+            sem_wait(sem_sync);
+        }
+    }
+    info(BEGIN, 6, id);
+    if(id!=13){
+        while(ok>=0){
+            sem_wait(sem_13);
+            ok=*proc_6_thread_13_pending;
+            sem_post(sem_13);
+        }
+    }
+    info(END, 6, id);
+    if(id==13){
+        sem_wait(sem_13);
+        *proc_6_thread_13_pending=-1;
+        sem_post(sem_13);
+    }
+    sem_post(sem_sync);
+    
+    return NULL;
+}
 void proc_6()
 {
+    pthread_t threads[42];
+    sem_t sem_sync;
+    sem_init(&sem_sync, 0, 5);
+    sem_t sem_13;
+    sem_init(&sem_13, 0, 1);
+    sem_t sem_remaining;
+    sem_init(&sem_remaining, 0, 1);
+    int proc_6_thread_13_pending = 0;
+
+    for (int i = 0; i < 42; i++)
+    {
+        proc_6_thread_data *data = malloc(sizeof(proc_6_thread_data));
+        data->id = i + 1;
+        data->proc_6_thread_13_pending = &proc_6_thread_13_pending;
+        data->sem_sync = &sem_sync;
+        data->sem_13 = &sem_13;
+
+        pthread_create(&threads[i], NULL, proc_6_thread, data);
+    }
+    for (int i = 0; i < 42; i++)
+    {
+        pthread_join(threads[i], NULL);
+    }
+
+    sem_destroy(&sem_sync);
+    sem_destroy(&sem_13);
+    sem_destroy(&sem_remaining);
 }
 void proc_7()
 {
