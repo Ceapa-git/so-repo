@@ -36,6 +36,12 @@ void *proc_5_thread(void *arg)
             sem_post(sem);
         }
     }
+    if (id == 3)
+    {
+        sem_t *sem_proc_7_thread_4_end = sem_open("/sem_proc_7_thread_4_end", 0);
+        sem_wait(sem_proc_7_thread_4_end);
+        sem_close(sem_proc_7_thread_4_end);
+    }
 
     info(BEGIN, 5, id);
     if (id == 2)
@@ -58,6 +64,12 @@ void *proc_5_thread(void *arg)
         sem_wait(sem);
         *proc_5_thread_1_end = 1;
         sem_post(sem);
+    }
+    if (id == 3)
+    {
+        sem_t *sem_proc_5_thread_3_end = sem_open("/sem_proc_5_thread_3_end", 0);
+        sem_post(sem_proc_5_thread_3_end);
+        sem_close(sem_proc_5_thread_3_end);
     }
     return NULL;
 }
@@ -205,9 +217,23 @@ void *proc_7_thread(void *arg)
     int id = ((proc_7_thread_data *)arg)->id;
     free(arg);
 
+    if (id == 6)
+    {
+        sem_t *sem_proc_5_thread_3_end = sem_open("/sem_proc_5_thread_3_end", 0);
+        sem_wait(sem_proc_5_thread_3_end);
+        sem_close(sem_proc_5_thread_3_end);
+    }
+
     info(BEGIN, 7, id);
     info(END, 7, id);
-    
+
+    if (id == 4)
+    {
+        sem_t *sem_proc_7_thread_4_end = sem_open("/sem_proc_7_thread_4_end", 0);
+        sem_post(sem_proc_7_thread_4_end);
+        sem_close(sem_proc_7_thread_4_end);
+    }
+
     return NULL;
 }
 void proc_7()
@@ -231,8 +257,38 @@ int main()
     init();
     info(BEGIN, 1, 0);
 
+    sem_t *sem_proc_7_thread_4_end = sem_open("/sem_proc_7_thread_4_end", O_CREAT | O_EXCL, 0666, 0);
+    if (sem_proc_7_thread_4_end == SEM_FAILED)
+    {
+        sem_unlink("/sem_proc_7_thread_4_end");
+        sem_proc_7_thread_4_end = sem_open("/sem_proc_7_thread_4_end", O_CREAT | O_EXCL, 0666, 0);
+        if (sem_proc_7_thread_4_end == SEM_FAILED)
+        {
+            printf("Error creating semaphore\n");
+            return -1;
+        }
+    }
+    sem_close(sem_proc_7_thread_4_end);
+    sem_t *sem_proc_5_thread_3_end = sem_open("/sem_proc_5_thread_3_end", O_CREAT | O_EXCL, 0666, 0);
+    if (sem_proc_5_thread_3_end == SEM_FAILED)
+    {
+        sem_unlink("/sem_proc_5_thread_3_end");
+        sem_proc_5_thread_3_end = sem_open("/sem_proc_5_thread_3_end", O_CREAT | O_EXCL, 0666, 0);
+        if (sem_proc_5_thread_3_end == SEM_FAILED)
+        {
+            printf("Error creating semaphore\n");
+            return -1;
+        }
+    }
+    sem_close(sem_proc_5_thread_3_end);
+
     pid_t pid_2;
     pid_2 = fork();
+    if (pid_2 < 0)
+    {
+        printf("Error forking\n");
+        return -1;
+    }
     if (pid_2 == 0)
     {
         info(BEGIN, 2, 0);
@@ -242,6 +298,11 @@ int main()
 
     pid_t pid_3;
     pid_3 = fork();
+    if (pid_3 < 0)
+    {
+        printf("Error forking\n");
+        return -1;
+    }
     if (pid_3 == 0)
     {
         info(BEGIN, 3, 0);
@@ -251,16 +312,31 @@ int main()
 
     pid_t pid_4;
     pid_4 = fork();
+    if (pid_4 < 0)
+    {
+        printf("Error forking\n");
+        return -1;
+    }
     if (pid_4 == 0)
     {
         info(BEGIN, 4, 0);
         pid_t pid_6;
         pid_6 = fork();
+        if (pid_6 < 0)
+        {
+            printf("Error forking\n");
+            return -1;
+        }
         if (pid_6 == 0)
         {
             info(BEGIN, 6, 0);
             pid_t pid_7;
             pid_7 = fork();
+            if (pid_7 < 0)
+            {
+                printf("Error forking\n");
+                return -1;
+            }
             if (pid_7 == 0)
             {
                 info(BEGIN, 7, 0);
@@ -280,6 +356,11 @@ int main()
 
     pid_t pid_5;
     pid_5 = fork();
+    if (pid_5 < 0)
+    {
+        printf("Error forking\n");
+        return -1;
+    }
     if (pid_5 == 0)
     {
         info(BEGIN, 5, 0);
@@ -294,5 +375,7 @@ int main()
     waitpid(pid_5, NULL, 0);
 
     info(END, 1, 0);
+    sem_unlink("/sem_proc_7_thread_4_end");
+    sem_unlink("/sem_proc_5_thread_3_end");
     return 0;
 }
