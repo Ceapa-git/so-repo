@@ -11,19 +11,6 @@
 #include <semaphore.h>
 #include "a2_helper.h"
 
-void proc_1()
-{
-}
-void proc_2()
-{
-}
-void proc_3()
-{
-}
-void proc_4()
-{
-}
-
 typedef struct
 {
     int id;
@@ -208,8 +195,35 @@ void proc_6()
     sem_destroy(&sem_13);
     sem_destroy(&sem_remaining);
 }
+
+typedef struct
+{
+    int id;
+} proc_7_thread_data;
+void *proc_7_thread(void *arg)
+{
+    int id = ((proc_7_thread_data *)arg)->id;
+    free(arg);
+
+    info(BEGIN, 7, id);
+    info(END, 7, id);
+    
+    return NULL;
+}
 void proc_7()
 {
+    pthread_t threads[6];
+    for (int i = 0; i < 6; i++)
+    {
+        proc_7_thread_data *data = malloc(sizeof(proc_7_thread_data));
+        data->id = i + 1;
+
+        pthread_create(&threads[i], NULL, proc_7_thread, data);
+    }
+    for (int i = 0; i < 6; i++)
+    {
+        pthread_join(threads[i], NULL);
+    }
 }
 
 int main()
@@ -222,7 +236,6 @@ int main()
     if (pid_2 == 0)
     {
         info(BEGIN, 2, 0);
-        proc_2();
         info(END, 2, 0);
         return 0;
     }
@@ -232,7 +245,6 @@ int main()
     if (pid_3 == 0)
     {
         info(BEGIN, 3, 0);
-        proc_3();
         info(END, 3, 0);
         return 0;
     }
@@ -261,7 +273,6 @@ int main()
             info(END, 6, 0);
             return 0;
         }
-        proc_4();
         waitpid(pid_6, NULL, 0);
         info(END, 4, 0);
         return 0;
@@ -277,11 +288,11 @@ int main()
         return 0;
     }
 
-    proc_1();
     waitpid(pid_2, NULL, 0);
     waitpid(pid_3, NULL, 0);
     waitpid(pid_4, NULL, 0);
     waitpid(pid_5, NULL, 0);
+
     info(END, 1, 0);
     return 0;
 }
