@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <semaphore.h>
+#include <errno.h>
 
 #define VALID_SECT_COUNT 7
 
@@ -205,7 +206,7 @@ int main(int argc, char **argv)
             do
             {
                 read(req_pd, file_map + i, 1);
-            } while (file_map[i++]!='!');
+            } while (file_map[i++] != '!');
             to_c_string(file_map);
 
             char map_message[] = "MAP_FILE";
@@ -392,5 +393,11 @@ int main(int argc, char **argv)
     close(req_pd);
     close(resp_pd);
     unlink("RESP_PIPE_26934");
+
+    shm_unlink("/fX247y");
+    if (shm_addr != (void *)-1)
+        munmap((void *)shm_addr, 3384148);
+    if (file_addr != (void *)-1)
+        munmap((void *)file_addr, file_size);
     return 0;
 }
