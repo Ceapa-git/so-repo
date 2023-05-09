@@ -89,12 +89,12 @@ void to_pipe_string(char *string)
     int i = -1;
     while (string[++i] != '\0')
         ;
-    string[i] = '.';
+    string[i] = '!';
 }
 void to_c_string(char *string)
 {
     int i = -1;
-    while (string[++i] != '.')
+    while (string[++i] != '!')
         ;
     string[i] = '\0';
 }
@@ -130,7 +130,7 @@ int main(int argc, char **argv)
         do
         {
             read(req_pd, buff + i, 1);
-        } while (buff[i++] != '.');
+        } while (buff[i++] != '!');
         to_c_string(buff);
         if (strcmp(buff, "ECHO") == 0)
         {
@@ -202,18 +202,11 @@ int main(int argc, char **argv)
         {
             char file_map[260] = {};
             int i = 0;
-            int first_dot = 0;
-            int second_dot = 0;
             do
             {
                 read(req_pd, file_map + i, 1);
-                if (file_map[i] == '.' && !first_dot)
-                    first_dot = 1;
-                else if (file_map[i] == '.')
-                    second_dot = 1;
-                i++;
-            } while (!second_dot);
-            file_map[--i] = '\0';
+            } while (file_map[i++]!='!');
+            to_c_string(file_map);
 
             char map_message[] = "MAP_FILE";
             to_pipe_string(map_message);
